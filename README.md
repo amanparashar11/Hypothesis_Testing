@@ -1,7 +1,7 @@
 # Hypothesis_Testing
 
 
-**Question 1: Food Standards Agency Interventions –**
+**Question 1: Food Standards Agency Interventions**
 
 **The Scenario**
 
