@@ -1,0 +1,1215 @@
+---
+title: "Business Statistics Final-Term Assessment IB94X0 2022-2023 #2"
+author: "2227324"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 3
+---
+
+# Acknowledgement
+
+---
+
+This is to certify that the work I am submitting is my own. All external references and sources are clearly acknowledged and identified within the contents. I am aware of the University of Warwick regulation concerning plagiarism and collusion. 
+
+No substantial part(s) of the work submitted here has also been submitted by me in other assessments for accredited courses of study, and I acknowledge that if this has been done an appropriate reduction in the mark I might otherwise have received will be made.
+
+---
+
+
+---
+
+# Layout of the Report
+
+This report is divided into four sections as listed below:
+
+Section 1.1 - Food Standards Agency Interventions - Technical Development
+
+Section 1.2 - Food Standards Agency Interventions - Professional Report
+
+Section 2.1 - Book Sales - Technical Development
+
+Section 2.2 - Book Sales - Professional Report
+
+---
+
+# Section 1.1 - Food Standards Agency Interventions - Technical Development
+
+This analysis on the Food Standards Agency data fulfills the below mentioned asks from the
+managers of the agency:
+
+1.1.1 Visualise distributions across the Local Authorities (LAs) of the % of enforcement actions successfully achieved - for all impact levels combined.
+
+1.1.2 Visualise distributions across the Local Authorities (LAs) of the % of enforcement actions successfully achieved - for all impact levels separately - A to E.
+
+1.1.3 Determine if employing more number of employees increases the likelihood of establishments successfully responding to enforcement actions.
+
+1.1.4 Determine if there is a relationship between proportion of successful responses and the number of FTE food safety employees in each local authority.
+
+1.1.5 Determine if there is a relationship between proportion of successful responses and the number of employees as a proportion of the number of establishments in the local authority.
+
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE)
+options(width=100)
+
+```
+
+```{r install_packages, include=FALSE}
+
+#install.packages("tidyverse")
+#install.packages("gridExtra")
+#install.packages("kableExtra")
+#install.packages("emmeans")
+#install.packages("rmarkdown")
+#install.packages("htmltools")
+#install.packages("Hmisc")
+#install.packages("car")
+#install.packages('Rmisc')
+
+
+```
+
+```{r library, echo = FALSE, message = FALSE, warning =FALSE, include=FALSE}
+
+library(gridExtra)
+library(kableExtra)
+library(tidyverse)
+library(emmeans)
+library(rmarkdown)
+library(htmltools)
+library(Hmisc)
+library(car)
+library(Rmisc)
+library(grid)
+
+options(width=100)
+
+```
+
+
+### Data Dictionary for Food Data:
+
+Below mentioned data dictionary is as per the support sources provided for the question 1. Please note that only Features that are relevant for the analysis are described below:
+
+Feature | Description
+------------- | -------------
+Country | Country of Local Authority
+LAType | Local Authority Type
+LAName | Local Authority Name
+Total_Establishments | Total number of establishments in the area
+Percent_Compliant_A_E | Total  %  of Establishments that are broadly compliant with the regulations and are rated from category A to E
+A_Rated | Number of Establishments that are rated A in the area
+Percent_Compliant_A | Total  %  of establishments that are broadly compliant and rated A
+B_Rated | Number of establishments that are rated B in the area
+Percent_Compliant_B | Total  %  of establishments that are broadly compliant and rated B
+C_Rated | Number of establishments that are rated C in the area
+Percent_Compliant_C | Total  %  of establishments that are broadly compliant and rated C
+D_Rated | Number of establishments that are rated D in the area
+Percent_Compliant_D | Total  %  of establishments that are broadly compliant and rated D
+E_Rated | Number of establishments that are rated E in the area
+Percent_Compliant_E | Total  %  of establishments that are broadly compliant and rated E
+Interventions_A_E | Total  %  of Interventions that have taken place for all impact levels A to E
+Interventions_A | Total % of Interventions that have taken place for premises rated A
+Interventions_B | Total % of Interventions that have taken place for premises rated B
+Interventions_C | Total % of Interventions that have taken place for premises rated C
+Interventions_D | Total % of Interventions that have taken place for premises rated D
+Interventions_E | Total % of Interventions that have taken place for premises rated E
+Employees | Number of Professional Full Time Posts that are currently occupied in the Local Authority Office
+
+
+
+#### Read the Food Data into the r environment:
+
+```{r}
+
+food_data <-  read_csv("2019-20-enforcement-data-food-hygiene.csv", guess_max = 500, show_col_types = FALSE)
+
+# Note - The imported dataset has 353 observations, matching with the provided input .csv file
+
+```
+
+
+```{r, results='hide'}
+
+# Basic data checks on the imported data set
+
+# summary check
+
+summary(food_data)
+
+# structure check
+
+str(food_data)
+
+
+```
+
+Observations from the above data exploration -
+
+Data Cleaning Steps:
+
+1. Columns names are not intuitive in the imported data set, therefore, they are renamed. Definitions and updated column names are provided in the above data dictionary.
+2. There are missing values in the imported data set, these values need to be omitted.
+3. Columns such as 'Interventions_A' needs to be corrected for the data type as the current data type is Character, it should be numeric.
+
+*Note*: The imported data set has extra columns which are not needed to perform the required analysis.
+
+
+Data Cleaning Step 1: Renaming the columns to handle columns efficiently in the r environment:
+
+```{r}
+
+# Utilising the 'colnames' function to rename the Column names 
+
+colnames(food_data) <-c(
+            "Country","LAType","LAName","Total_Establishments","NR_For_Intervention",
+            "Outside_Programme","Percent_Compliant_A_E","Percent_Compliant_Inc_NR",
+            "A_Rated","Percent_Compliant_A","B_Rated","Percent_Compliant_B","C_Rated",
+            "Percent_Compliant_C","D_Rated","Percent_Compliant_D","E_Rated","Percent_Compliant_E",
+            "Interventions_A_E","Interventions_A","Interventions_B","Interventions_C","Interventions_D",
+            "Interventions_E","Interventions_NR","Volun_Closure","Seizure",
+            "Suspension_Revocation_Licence","Hygiene_Emergency_Pro_Notice",
+            "Pro_Order","Caution","Hygiene_Notices","Detention_Notices",
+            "Written_Warning","Prosecution_Concluded","Employees")
+
+```
+
+
+Data Cleaning Step 2: Identifying and Removing the rows with the missing values. Identifying NAs with the help of 'Interventions_A'. 
+
+```{r}
+
+food_data <- food_data %>%
+  filter(!is.na(Interventions_A))
+
+# After removing missing values, we've 347 rows (=353-6)
+
+```
+
+Data Cleaning Step 3: Correcting for the data types of Percent_Compliant_A and Interventions_A
+
+```{r, results='hide', warning=FALSE}
+
+# Char data type in 'Percent_Compliant_A' because there are 52 entries below with "NP"
+
+food_data %>%
+  dplyr::group_by(Percent_Compliant_A) %>%
+  dplyr::summarise(n = n()) %>%
+  arrange(desc(n))
+
+# Char data type in 'Interventions_A' because there are 24 entries below with "NR"
+
+food_data %>%
+  dplyr::group_by(Interventions_A) %>%
+  dplyr::summarise(n = n()) %>%
+  arrange(desc(n))
+
+# Updating "NP" and "NR" to 0 using dplyr mutate function:
+
+food_data <- food_data %>%
+  mutate(Percent_Compliant_A = if_else(Percent_Compliant_A == 'NP','0',Percent_Compliant_A),
+         Interventions_A = if_else(Interventions_A == 'NR','0',Interventions_A))
+
+
+# Updating the data type of Percent_Compliant_A, Interventions_A, and LAType
+
+food_data <- food_data %>%
+  mutate(Percent_Compliant_A = as.numeric(Percent_Compliant_A),
+         Interventions_A = as.numeric(Interventions_A),
+         LAType = as.factor(LAType))
+
+```
+
+
+
+```{r, results='hide'}
+
+# Checking summary and str to see if all the updates are made correctly:
+
+summary(food_data)
+
+str(food_data)
+
+```
+
+### 1.1.1 Visualise distributions across the Local Authorities (LAs) of the % of enforcement actions successfully achieved - for all impact levels combined.
+
+
+```{r}
+
+ggplot(food_data, aes(x = Interventions_A_E))+
+  geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) + 
+  stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_A_E), sd = sd(food_data$Interventions_A_E)), color = "blue") +
+  labs(x= 'Interventions A-E',y='Density', title = 'Distribution of Enforcement Actions Successfully achieved')
+
+```
+
+### 1.1.2 - Visualise distributions across the Local Authorities (LAs) of the % of enforcement actions successfully achieved - for all impact levels separately - A to E.
+
+```{r}
+
+grid.arrange(
+  
+  ggplot(food_data, aes(Interventions_A))+
+    geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) +
+    stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_A), sd = sd(food_data$Interventions_A)), color = "blue")
+    +labs(x= 'Intervention A', y = 'Density'), 
+  
+  ggplot(food_data, aes(Interventions_B))+
+  geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) +
+    stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_B), sd = sd(food_data$Interventions_B)), color = "blue")
+    +labs(x= 'Intervention B', y = 'Density'), 
+  
+  ggplot(food_data, aes(Interventions_C))+
+  geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) +
+    stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_C), sd = sd(food_data$Interventions_C)), color = "blue")
+    +labs(x= 'Intervention C', y = 'Density'),
+  
+  ggplot(food_data, aes(Interventions_D))+
+  geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) +
+    stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_D), sd = sd(food_data$Interventions_D)), color = "blue")
+    +labs(x= 'Intervention D', y = 'Density'),
+  
+  ggplot(food_data, aes(Interventions_E))+
+  geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) +
+    stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_E), sd = sd(food_data$Interventions_E)), color = "blue")
+    +labs(x= 'Intervention E', y = 'Density'), 
+  
+  ncol=2, top = textGrob("Percent of enforcement actions successfully achieved - for all impact levels separately - A to E")
+)
+
+
+```
+
+### 1.1.3 - Determine if employing more number of employees increases the likelihood of establishments successfully responding to enforcement actions.
+
+Checking visually the correlation between Employees and Interventions A-E:
+
+```{r}
+
+emp_est_plot <- ggplot(food_data, aes(y=Interventions_A_E, x=Employees)) + geom_point() + labs(x="Employees", y="Interventions A-E", subtitle="The shaded area shows the 95% CI for the best-fitting regression line (r = -0.02)", title = "Variation in Interventions A-E as a function of Number of Employees") + geom_smooth(method=lm)
+
+emp_est_plot
+
+```
+
+
+
+As seen from the above figure, there is a weak correlation between Employees and Interventions A-E.
+This weak correlation is confirmed by the below r values:
+
+
+```{r}
+# Checking the correlation between Employees and Interventions_A_E
+
+rcorr(
+  food_data$Employees,
+  food_data$Interventions_A_E
+  )
+
+```
+
+Utilising the lm model to determine the relationship between Interventions(A-E) and Employees
+
+```{r}
+
+lm_intervention_employees <- lm(Interventions_A_E ~ Employees, food_data)
+
+summary(lm_intervention_employees)
+
+# Confirming the above results via anova()
+
+anova(lm_intervention_employees)
+
+```
+
+As evident from the above summary of linear model and anova test - it is unlikely (r= -0.02) that employing more number of employees increases the likelihood of establishments successfully responding to enforcement actions [t(345) = 67.9,p = 0.655)] 
+
+
+### 1.1.4 - Determine if there is a relationship between proportion of successful responses and the number of FTE food safety employees in each local authority.
+
+```{r}
+
+# Checking the correlation:
+
+emp_est_LAType_plot <- ggplot(food_data, aes(y=Interventions_A_E, x=Employees, colour = LAType)) + geom_point() + labs(x="Employees", y="Interventions A-E", subtitle="The shaded area shows the 95% CI for the best-fitting regression line", title = "Variation in Interventions A-E as a function of Employees for Each LA Type") + geom_smooth(method=lm)
+
+emp_est_LAType_plot
+
+```
+
+```{r}
+
+# Utilising lm model to determine the relationship between interventions_A_E and Employees for each LAType
+
+lm_employees_intervention_LAType <- lm(Interventions_A_E~Employees + LAType, data = food_data)
+
+
+lm_employees_intervention_LAType_emm <- emmeans(lm_employees_intervention_LAType, ~LAType)
+lm_employees_intervention_LAType_emm
+
+```
+
+
+
+```{r}
+
+# plots for comparison
+
+ggplot(summary(lm_employees_intervention_LAType_emm), aes(x=LAType, y=emmean, ymin=lower.CL, ymax=upper.CL, colour = LAType)) + geom_point() + geom_linerange() + labs(x="LAType", y="Intervention (A-E)", subtitle="Error Bars are Extent of 95% CIs", title = "CIs for each LA Type") + theme(axis.text.x=element_text(angle = 90, hjust = 0))
+
+
+```
+
+## 1.1.5 - Determine if there is a relationship between proportion of successful responses and the number of employees as a proportion of the number of establishments in the local authority.
+
+```{r}
+
+# Calculating a new column having Employees per establishment 
+
+food_data$Employees_Per_Establishment <- (food_data$Employees/food_data$Total_Establishments)
+
+```
+
+```{r}
+# Plot to visualize the correlation
+
+ggplot(food_data, aes(y=Interventions_A_E, x=Employees_Per_Establishment)) + geom_point() + labs(x="Employees per Establishment", y="Interventions A-E", subtitle="The shaded area shows the 95% CI for the best-fitting regression line", title = "Variation in Interventions A-E as a function of Employees per Establishment") + geom_smooth(method=lm)
+
+```
+
+
+```{r, warning=FALSE}
+# Checking the correlation coefficient between Interventions_A_E and Employees_Per_Establishment
+
+rcorr(
+  food_data$Interventions_A_E, 
+  food_data$Employees_Per_Establishment
+  )
+
+```
+
+As seen form the above figure and correlation values, there is a positive correlation between Employees/Establishment and Interventions A_E.
+
+```{r}
+
+#lm model:
+
+lm_intervention_emp_per_est <- lm(Interventions_A_E ~ Employees_Per_Establishment, food_data)
+summary(lm_intervention_emp_per_est)
+
+```
+
+```{r}
+
+anova(lm_intervention_emp_per_est)
+
+```
+
+
+
+# Section 1.2 - Food Standards Agency Interventions - Professional Report
+
+This section of the report aims to provide the conclusions of the technical development and answer the requirements of the politicians and managers of the food agency.
+
+### Visualise distributions across the Local Authorities (LAs) of the % of enforcement actions successfully achieved - for all impact levels combined
+
+Below figure shows the distribution of percent of enforcement actions successfully achieved for all impact levels combined for each of the LA Type. As evident from the distribution, each of the LA Type peaks in the range of 85-100%.
+
+
+```{r, echo=FALSE}
+
+ggplot(food_data, aes(x = Interventions_A_E))+
+  geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) + 
+  stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_A_E), sd = sd(food_data$Interventions_A_E)), color = "blue") +
+  labs(x= 'Interventions A-E',y='Density', title = 'Distribution of Enforcement Actions Successfully achieved')
+
+```
+
+### Visualise distributions across the Local Authorities (LAs) of the % of enforcement actions successfully achieved - for all impact levels separately - A to E
+
+
+Below figure shows the distribution of percent of enforcement actions successfully achieved for all impact levels separately ( from A to E). Frequency distribution at each of the impact levels is skewed towards the right hand side. Also, the frequency distribution for Intervention A is highly non-uniform with most values clustered around 95-100% range. Frequency distribution for Intervention E is the least clustered of all.
+
+```{r, echo=FALSE}
+
+grid.arrange(
+  
+  ggplot(food_data, aes(Interventions_A))+
+    geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) +
+    stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_A), sd = sd(food_data$Interventions_A)), color = "blue")
+    +labs(x= 'Intervention A', y = 'Density'), 
+  
+  ggplot(food_data, aes(Interventions_B))+
+  geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) +
+    stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_B), sd = sd(food_data$Interventions_B)), color = "blue")
+    +labs(x= 'Intervention B', y = 'Density'), 
+  
+  ggplot(food_data, aes(Interventions_C))+
+  geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) +
+    stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_C), sd = sd(food_data$Interventions_C)), color = "blue")
+    +labs(x= 'Intervention C', y = 'Density'),
+  
+  ggplot(food_data, aes(Interventions_D))+
+  geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) +
+    stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_D), sd = sd(food_data$Interventions_D)), color = "blue")
+    +labs(x= 'Intervention D', y = 'Density'),
+  
+  ggplot(food_data, aes(Interventions_E))+
+  geom_histogram(aes(y = ..density..), binwidth = 1, position = "identity" ,alpha = 0.8) +
+    stat_function(fun = dnorm, args = list(mean = mean(food_data$Interventions_E), sd = sd(food_data$Interventions_E)), color = "blue")
+    +labs(x= 'Intervention E', y = 'Density'), 
+  
+  ncol=2, top = textGrob("Percent of enforcement actions successfully achieved - for all impact levels separately - A to E")
+)
+
+```
+
+
+
+### Determine if employing more number of employees increases the likelihood of establishments successfully responding to enforcement actions
+
+In order to determine if employing more number of employees increases the likelihood of establishments successfully responding to enforcement actions, we have utilised the linear model. As seen form the below figure, there is weak correlation between employees and successful response to enforcement actions. 
+Analysis form the linear model shows that, Employees is not a significant predictor for successful response to the enforcement actions, t(345) = -0.447, p = 0.655.
+
+Therefore, it is unlikely that employing more number of employees increases the likelihood of establishments successfully responding to enforcement actions.
+
+
+```{r, echo=FALSE}
+
+emp_est_plot
+
+```
+
+
+
+### Determine if there is a relationship between proportion of successful responses and the number of FTE food safety employees in each local authority
+
+
+Below figure shows a weak correlation between Employees and Interventions A to E. 
+
+```{r, echo=FALSE}
+
+emp_est_LAType_plot <- ggplot(food_data, aes(y=Interventions_A_E, x=Employees, colour = LAType)) + geom_point() + labs(x="Employees", y="Interventions A-E", subtitle="The shaded area shows the 95% CI for the best-fitting regression line", title = "Variation in Interventions A-E as a function of Employees for Each LA Type") + geom_smooth(method=lm)
+
+emp_est_LAType_plot
+
+```
+
+
+The table below shows the average proportion of successful responses for each of the LA type along with the associated confidence intervals. It should be noted that the upper and lower bound of confidence intervals are overlapping, which is displyed in the figure below.
+
+
+```{r, echo=FALSE}
+
+lm_employees_intervention_LAType_emm
+
+```
+
+```{r, echo=FALSE}
+
+ggplot(summary(lm_employees_intervention_LAType_emm), aes(x=LAType, y=emmean, ymin=lower.CL, ymax=upper.CL, colour = LAType)) + geom_point() + geom_linerange() + labs(x="LAType", y="Intervention (A-E)", subtitle="Error Bars are Extent of 95% CIs", title = "CIs for each LA Type") + theme(axis.text.x=element_text(angle = 90, hjust = 0))
+
+```
+
+### Determine if there is a relationship between proportion of successful responses and the number of employees as a proportion of the number of establishments in the local authority
+
+The below figure shows the correlation between Interventions A to E and the number of employees per establishment. There seems to be a positive correlation which is further investigated via anova test.
+
+```{r, echo=FALSE}
+
+ggplot(food_data, aes(y=Interventions_A_E, x=Employees_Per_Establishment)) + geom_point() + labs(x="Employees per Establishment", y="Interventions A-E", subtitle="The shaded area shows the 95% CI for the best-fitting regression line", title = "Variation in Interventions A-E as a function of Employees per Establishment") + geom_smooth(method=lm)
+
+```
+
+As shown below, Employees per Establishment is statistically significant predictor of interventions ( p < 0.005). Therefore, to conclude - proportion of successful responses increases as the proportion of the number of employees/establishments increases.
+
+```{r, echo = FALSE}
+
+anova(lm_intervention_emp_per_est)
+
+```
+
+
+# Section 2.1 - Book Sales - Technical Development
+
+---
+
+This analysis on the Book Sales data fulfills the below mentioned asks from the
+managers of a publishing company:
+
+2.1.1 Do books from different genres have different daily sales on average?
+
+2.1.2 Do books have more/fewer sales depending upon their average review scores and total number of reviews?
+
+2.1.3 What is the effect of sale price upon the number of sales, and is this different across genres?
+
+---
+
+
+---
+
+### Data Dictionary for Book Sales Data:
+
+Below mentioned data dictionary is as per the description provided for the question 2:
+
+Feature | Description
+------------- | -------------
+sold.by | book seller name
+publisher.type | type of publisher i.e. amazon, big five, indie, single author, small/medium
+genre | Genre of the book i.e. childrens, fiction and non-fiction
+avg.review | average review of the book out of 5 
+daily.sales | average number of sales (minus refunds) across all days in the period
+total.reviews | total no. reviews for the particular book
+sale.price | average price for which the book sold across all sales in the period
+
+
+---
+
+
+Renamed "sold by" to "sold.by" in the input csv file, to avoid run time errors in r environment.
+
+#### Read Book Sales Data into the r environment:
+
+```{r}
+
+sales_data <- read_csv("publisher_sales.csv", guess_max = 10000, show_col_types = FALSE)
+
+# Note - no. of rows and columns imported are checked against the csv file
+
+```
+
+
+```{r, include = FALSE}
+
+# Checking the Structure and Summary of the data
+
+# checking the summary
+str(sales_data)
+
+# checking the structure
+summary(sales_data)
+
+```
+
+### Question 2.1.1 - Do books from different genres have different daily sales on average?
+
+Summary statistics:
+
+```{r}
+
+book_data_summary <- sales_data %>%
+  dplyr::group_by(genre) %>%
+  dplyr::summarize(mean=mean(daily.sales),median = median(daily.sales),n = n())
+
+book_data_summary
+
+```
+
+Analyzing genre vs daily.sales plot
+
+```{r genre_vs_daily_sales}
+
+ggplot(sales_data, aes(x=genre, y = daily.sales))+
+  geom_boxplot()+
+  labs(title="Daily Sales by Genre", x="Genre", y="Daily Sales")
+
+```
+
+
+Below-mentioned modifications are done to the imported data set to make it suitable for the analysis:
+
+1. Data entry in the non_fiction genre with daily sales as -0.53, updated it to 0.
+
+2. All the character data types are converted to factor data types.
+
+```{r}
+# Updating daily sales value
+
+sales_data <- sales_data %>%
+  mutate(daily.sales = ifelse(daily.sales<0,0,daily.sales))
+
+# Updating the data type
+
+# generating a vector to keep the column names
+columns <- c("sold.by", "publisher.type", "genre")
+
+# Set the correct measurement levels or data types
+sales_data[columns] <- lapply(sales_data[columns], as.factor)
+
+```
+
+
+```{r data_type_check}
+
+# Checking if the correct data type corrections are made or not
+
+str(pull(sales_data,sold.by))
+str(pull(sales_data,publisher.type))
+str(pull(sales_data,genre))
+
+# all character data types are converted to factor
+
+```
+
+Creating the data set for the requirement 2.1
+
+```{r avg_daily_sales_by_genre}
+
+# Filtering out genre and daily.sales
+
+daily_sales_by_genre <- sales_data %>%
+  select(genre,daily.sales)
+```
+
+```{r lm_model}
+
+# lm model for predicting daily sales based on genre
+
+lm_daily_sales_genre <- lm(daily.sales~genre, data=daily_sales_by_genre)
+
+```
+
+Utilising the anova function to test whether genre has a significant effect on the daily sales.
+
+```{r anova_daily_sales}
+
+anova(lm_daily_sales_genre)
+
+```
+
+
+```{r NHST_lm_sales_data}
+
+# Using the NHST approach
+
+summary(lm_daily_sales_genre)
+
+```
+
+Marginal means: 
+
+```{r daily_sales_emm}
+
+lm_daily_sales_genre_emm <- emmeans(lm_daily_sales_genre, ~genre)
+lm_daily_sales_genre_emm
+
+```
+Also, from the summary() approach, we are not able to calculate the difference between fiction and non_fiction genre. Therefore,
+
+1. using pairs function, to see if the differences among the genre are significant
+
+2. using the contrast function in conjunction with confint to calculate the mean differences with associated confidence intervals
+
+```{r daily_sales_pair}
+
+lm_daily_sales_genre_pairs <- pairs(lm_daily_sales_genre_emm)
+lm_daily_sales_genre_pairs
+```
+As evident from the above calculations based on Tukey test, the differences among each of the genre is significant (p<0.0001).
+
+```{r daily_sales_confit_pairs}
+
+lm_daily_sales_genre_contrast <- confint(pairs(lm_daily_sales_genre_emm))
+lm_daily_sales_genre_contrast
+```
+
+```{r comparison_plots}
+
+# plots for comparison
+
+p.gain <- ggplot(summary(lm_daily_sales_genre_emm), aes(x=genre, y=emmean, ymin=lower.CL, ymax=upper.CL)) + geom_point() + geom_linerange() + labs(x="Genre", y="Average Daily Sales", subtitle="Error Bars are Extent of 95% CIs", title = "Distribution across Genre")
+
+p.contrasts <- ggplot(lm_daily_sales_genre_contrast, aes(x=contrast, y=estimate, ymin=lower.CL, ymax=upper.CL)) + geom_point() + geom_linerange() +labs(x="Genre - Contrast", y="Average Daily Sales", subtitle="Error Bars are Extent of 95% CIs",title = "Distribution - Genre Contrast")+scale_x_discrete(guide = guide_axis(n.dodge = 2))
+
+grid.arrange(p.gain, p.contrasts, ncol=2)
+
+```
+
+
+Visualizing the distribution of daily sales across genre with the help of Null Hypothesis model and Alternative Hypothesis model
+
+Step 1 - Arguments for Null Hypothesis and Alternative Hypothesis model
+
+```{r null_vs_alt Arguments}
+
+# Arguments for Null Hypothesis Model
+
+m.daily.sales.intercept <- lm(daily.sales~1, data=daily_sales_by_genre)
+
+null.mean <- coef(m.daily.sales.intercept)
+null.sd <- sigma(m.daily.sales.intercept)
+
+# Arguments for Alternative Hypothesis Model - Running lm model and calculating emmeans
+
+alternative.means <- summary(lm_daily_sales_genre_emm)$emmean
+alternative.sd <- sigma(lm_daily_sales_genre)
+
+```
+
+Step 2 - Visually Comparing Null Hypothesis and Alternative Hypothesis model. 
+
+```{r null_vs_alt model, warning=FALSE}
+
+# Checking the Null Hypothesis Distribution:
+
+null_plot <- ggplot(daily_sales_by_genre,aes(x=daily.sales, fill = genre))+
+  geom_histogram(aes(y=..density..),position="identity", alpha=0.3, binwidth=1)+
+  stat_function(fun=dnorm, args=list(mean=null.mean, sd=null.sd)) + labs(x="Daily Sales", y="Density", title="Null Hypothesis", fill="Genre")
+
+# Checking the Alternative Hypothesis Distribution:
+
+colours <- scales::hue_pal()(3)
+alt_plot <- ggplot(daily_sales_by_genre, aes(x=daily.sales, fill=genre))+
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3, binwidth=1)+ 
+  labs(x="Daily Sales", y="Density", title="Alternative Hypothesis", fill="Origin") +
+	stat_function(fun=dnorm, args=list(mean=alternative.means[1], sd=alternative.sd), col=colours[1]) +
+	stat_function(fun=dnorm, args=list(mean=alternative.means[2], sd=alternative.sd), col=colours[2]) +
+	stat_function(fun=dnorm, args=list(mean=alternative.means[3], sd=alternative.sd), col=colours[3]) 
+
+grid.arrange(null_plot, alt_plot, ncol=1)
+
+```
+
+
+Above plots confirms our finding that three genre differs with respect to mean. Therefore, the Alternative Hypothesis plot governs our actual distribution.
+
+
+
+### Question 2.1.2 - Do books have more/fewer sales depending upon their average review scores and total number of reviews?
+
+
+For this ask, we need to perform the Multiple Linear Regression. We will first get the overview of the underlying data by performing following steps:
+
+1. Evaluate the correlation matrix
+
+2. Individual effect of average review scores on daily sales
+
+3. Individual effect of total reviews on daily sales
+
+4. Multiple regression - determining main effects and interactions effects
+
+Checking the data distribution of daily.sales with respect to total reviews and average reviews
+
+```{r sales_distribution}
+
+sales_tot_rev_plot <- ggplot(sales_data, aes(y=daily.sales, x=total.reviews)) + geom_point() + labs(x="Total Reviews", y="Daily Sales", subtitle="The shaded area shows the 95% CI for the best-fitting regression line", title = "Daily Sales vs Total Reviews") + geom_smooth(method=lm)
+
+sales_avg_rev_plot <- ggplot(sales_data, aes(y=daily.sales, x=avg.review)) + geom_point() + labs(x="Average Reviews", y="Daily Sales", subtitle="The shaded area shows the 95% CI for the best-fitting regression line", title = "Daily Sales vs Average Reviews") + geom_smooth(method=lm)
+
+sales_dist <- grid.arrange(sales_tot_rev_plot, sales_avg_rev_plot, ncol=1)
+
+```
+
+As seen in the above Figure, Daily sales is positively correlated with Total Reviews and not correlated with Average Reviews.
+
+Creating a data frame for daily sales, average reviews, and total reviews
+
+```{r sales_review_df}
+
+# Selecting sales and avg review and total reviews columns
+
+sales_rev_df <- sales_data %>%
+  select(daily.sales,avg.review,total.reviews)
+
+```
+
+Checking the correlation matrix to see the correlation between each pair of variables and a p-value:
+
+```{r rcorr calculations}
+
+sales_corr_matrix <- rcorr(as.matrix(sales_rev_df))
+sales_corr_matrix
+
+```
+
+Determining the individual effect of Average Reviews and Total Reviews on daily sales:
+
+First, effect of average review scores on daily sales through lm() function
+
+```{r lm_sales_avg_rev}
+
+# Linear model for daily sales vs avg reviews
+
+lm_sales_avg_rev <- lm(daily.sales~avg.review, data = sales_rev_df)
+summary(lm_sales_avg_rev)
+
+```
+
+```{r}
+
+# 95% CI for average reviews
+
+cbind(coefficient=coef(lm_sales_avg_rev), confint(lm_sales_avg_rev))
+
+```
+
+
+Second, effect of total reviews on daily sales through lm() function
+
+```{r lm_sales_tot_rev}
+
+# Linear model for daily sales vs total reviews
+
+lm_sales_tot_rev <- lm(daily.sales~total.reviews, data = sales_rev_df)
+summary(lm_sales_tot_rev)
+
+```
+
+```{r}
+
+# 95% CI for total reviews
+
+cbind(coefficient=coef(lm_sales_tot_rev), confint(lm_sales_tot_rev))
+
+```
+
+Multiple Regression - checking the combined effect of average reviews scores and total reviews on the daily sales:
+
+
+```{r}
+
+# lm model to predict the daily sales as a function of average and total reviews
+
+lm_sales_avg_tot_rev <- lm(daily.sales ~ avg.review + total.reviews, data = sales_rev_df)
+
+summary(lm_sales_avg_tot_rev)
+
+```
+The results from the above table show that the daily sales decreases by statistically significant amount of £3.94 t(5997) = -7.7, p < 0.0001, for every extra increase in average reviews, holding the total reviews constant. Also, when controlling the average reviews, the daily sales increase by statistically significant amount of £0.54 t(5997) = 69.5, p< 0.0001, for every extra increase in total reviews.
+
+```{r}
+
+# Generating the confidence intervals for the estimations approach
+
+cbind(coefficient=coef(lm_sales_avg_tot_rev), confint(lm_sales_avg_tot_rev))
+
+```
+
+The above 95% CI for avg.reviews and total.reviews follows a very stringent range and does not include 0. Therefore, these values are significantly different from zero.
+
+Visualizing the surface plots for the main effect of avg.reviews and total.reviews on daily.sales:
+
+```{r}
+
+sales_preds <- tibble(avg.review = unlist(expand.grid(seq(0,5,0.5), seq(0, 250, 5))[1]),
+                         total.reviews = unlist(expand.grid(seq(0, 20, 2), seq(0, 250, 5))[2]))
+
+sales_preds <- mutate(sales_preds,
+                         sales_hat = predict(lm_sales_avg_tot_rev, sales_preds))
+
+ggplot(sales_preds, aes(avg.review, total.reviews)) + geom_contour_filled(aes(z = sales_hat)) + guides(fill=guide_legend(title="Daily Sales")) + labs(x = "Average Review", y = "Total Reviews", title = "Variation in Daily Sales wrt. Total and Average Reviews")
+
+```
+
+Checking if there is an interaction between total reviews and average reviews. Running a lm() model including interaction effects as well in addition to main effects.
+
+```{r}
+
+sales_intr <- lm(daily.sales ~ avg.review*total.reviews, data = sales_rev_df)
+
+summary(sales_intr)
+
+```
+As seen from the above results, there is a statistically significant positive interaction between average reviews and total reviews when predicting the daily sales.
+
+Determining if the interaction effects are significant
+
+```{r}
+
+vif(lm_sales_avg_tot_rev)
+
+```
+
+Since the VIF scores are less than 5, therefore it is valid to consider both average and total reviews for the daily sales prediction.
+
+Also, let's check the model comparison via ANOVA() test to check if having additional complexity of considering interaction between total reviews and average reviews makes sense
+
+```{r}
+
+anova(lm_sales_avg_tot_rev, sales_intr)
+
+```
+
+
+Visualizing the main effect and interaction effect graphically:
+
+```{r}
+
+intr_surf_data <- tibble(avg.review = unlist(expand.grid(seq(0,5,0.5), seq(0, 250, 5))[1]),
+                         total.reviews = unlist(expand.grid(seq(0, 20, 2), seq(0, 250, 5))[2]))
+
+intr_surf_data <- mutate(intr_surf_data,
+                         main.hat = predict(lm_sales_avg_tot_rev, intr_surf_data),
+                         intr.hat = predict(sales_intr, intr_surf_data))
+
+surf.main <- ggplot(intr_surf_data, aes(avg.review, total.reviews)) + geom_contour_filled(aes(z = main.hat)) + guides(fill=guide_legend(title="Daily Sales"))+ labs(x = "Average Review", y = "Total Reviews", title = "Variation in Daily Sales wrt. Total and Average Reviews",subtitle = "Main Effects")
+
+
+surf.intr <- ggplot(intr_surf_data, aes(avg.review, total.reviews)) + geom_contour_filled(aes(z = intr.hat))  + guides(fill=guide_legend(title="Daily Sales"))+ labs(x = "Average Review", y = "Total Reviews", title = "Variation in Daily Sales wrt. Total and Average Reviews", subtitle = "Interaction Effects")
+
+sales_rev_main_int_plot <- grid.arrange(surf.main, surf.intr, nrow = 2)
+
+
+
+```
+
+
+
+### Question 2.1.3 - What is the effect of sale price upon the number of sales, and is this different across genres?
+
+Creating the data frame by selecting sale.price, daily.sales and genre
+
+```{r}
+
+sale_price_df <- sales_data %>%
+  select(sale.price,daily.sales,genre)
+
+```
+
+
+Checking the distribution for sales vs sale price across genre
+
+```{r}
+
+sp_sales_all <- ggplot(sale_price_df, aes(y=daily.sales, x=sale.price)) + geom_point(alpha = 0.15) + labs(x="Sales Price", y="Daily Sales", subtitle="Effect of Sales Price on Daily Sales for all Genre") + geom_smooth(method=lm)
+
+sp_sales_genre <- ggplot(sale_price_df, aes(y=daily.sales, x=sale.price, color = genre)) + geom_point(alpha = 0.15) + labs(x="Sales Price", y="Daily Sales", subtitle="Effect of Sales Price on Daily Sales by Genre") + geom_smooth(method=lm)
+
+sale_price_dist <- grid.arrange(sp_sales_all, sp_sales_genre, ncol=1)
+
+```
+
+
+As seen from the above figure, Sales Price is negatively correlated with Daily Sales.
+
+
+As shown in the below correlation matrix, daily sales and sales price are negatively correlated.
+
+```{r}
+
+cor(select(sale_price_df,daily.sales,sale.price))
+
+```
+
+
+
+
+Utilising the lm() function to determine the effect of sales price on daily sales
+
+```{r}
+
+lm_sales_sp <- lm(daily.sales~sale.price, data = sale_price_df)
+
+summary(lm_sales_sp)
+
+```
+
+```{r}
+
+# Confidence Intervals:
+cbind(coefficient=coef(lm_sales_sp), confint(lm_sales_sp))
+
+```
+
+```{r}
+
+# emmeans:
+
+(lm_sales_sp_emm <- emmeans(lm_sales_sp, ~sale.price))
+
+```
+The results from the above table shows that there is significant relationship between daily sales and sales price. There is an average decrease of 4 books for every increase in sales price (95% CI =[-4.15,-3.48]). This decrease is significantly different from zero, t(5998)=-22.38, p<.0001.
+
+Determining this effect across the genre - including genre as well in the predictors:
+
+```{r rcor calculations}
+
+lm_sales_sp_genre <- lm(daily.sales~sale.price + genre, data = sale_price_df)
+
+(  lm_sales_sp_genre_emm <- emmeans(lm_sales_sp_genre, ~genre)  )
+
+```
+
+Using anova() test to compare the above two models i.e. without and with controlling for genre:
+
+
+```{r}
+
+anova(lm_sales_sp, lm_sales_sp_genre)
+
+```
+Therefore the model with sales price and genre as predictors is significantly better than the model having sale price only as the predictor.
+
+Checking if daliy sales is different across the different genre:
+
+```{r}
+
+lm_daily_sales_sp_genre_pairs <- pairs(lm_sales_sp_genre_emm)
+lm_daily_sales_sp_genre_pairs
+```
+
+
+# Section 2.2 - Book Sales - Professional Report
+
+This section of the report aims to provide the conclusions of the technical development and answer the requirements of the managers of the publishing company.
+
+The table below (Table 2.2.1) shows the high-level summary statistics of the input book sales data provided to us. The data is evenly distributed in terms of number of records for each genre; also close proximity of mean and median indicates fairly symmetric distribution.
+
+```{r, echo=FALSE}
+book_data_summary %>%
+  kbl(caption = "Table 2.2.1 Summary Statistics for Daily Sales across Genre",
+      col.names = c("Genre","Mean","Median", "Records") ) %>%
+  kable_styling()
+
+```
+
+As the first step of the analyses, below figure helps us to visualise the Daily Sales across Genre. As evident form the below box-plot, there is one data entry in the non_fiction genre with daily sales as negative value, it makes more business sense to update this value to 0 daily sales for further analysis.
+
+```{r, echo=FALSE}
+
+ggplot(sales_data, aes(x=genre, y = daily.sales))+
+  geom_boxplot()+
+  labs(title="Daily Sales by Genre", x="Genre", y="Daily Sales")
+
+```
+
+### Do books from different genres have different daily sales on average?
+
+To answer this question, we first carried out the anova test and the results are summarised below:
+
+The Daily Sales differs significantly across genre, [F(2,5997)=2591, p < 0.0001].
+Similarly, using the summary() function or NHST hints towards the significant differences, taking *childrens* genre as a reference.
+
+In order to know the individual average sales - we have utilised the *estimated marginal means* approach. In addition to the means corresponding to each of the genre, we now have associated confidence intervals as well as shown below:
+
+```{r, echo=FALSE}
+
+lm_daily_sales_genre_emm
+
+```
+
+
+The left panel of the below figure shows the mean daily sales from each genre. Fiction has the highest sales, followed by non_fiction and childrens genre has the lowest daily sales. The right panel shows the estimates of the difference in daily sales for each pair of genre. For instance, the estimate for the fiction versus non_fiction comparison shows a point estimate of £30 greater gain for non_fiction 95% CI [28.4–31.7].
+
+```{r, echo=FALSE}
+
+p.gain <- ggplot(summary(lm_daily_sales_genre_emm), aes(x=genre, y=emmean, ymin=lower.CL, ymax=upper.CL)) + geom_point() + geom_linerange() + labs(x="Genre", y="Average Daily Sales", subtitle="Error Bars are Extent of 95% CIs", title = "Distribution across Genre")
+
+p.contrasts <- ggplot(lm_daily_sales_genre_contrast, aes(x=contrast, y=estimate, ymin=lower.CL, ymax=upper.CL)) + geom_point() + geom_linerange() +labs(x="Genre - Contrast", y="Average Daily Sales", subtitle="Error Bars are Extent of 95% CIs",title = "Distribution - Genre Contrast")+scale_x_discrete(guide = guide_axis(n.dodge = 2))
+
+grid.arrange(p.gain, p.contrasts, ncol=2)
+
+```
+
+Below plot shows two possible hypothesis for the concerned requirement. Based on our analysis, the Alternative Hypothesis plot governs our actual distribution and we can reject the Null Hypothesis.
+
+```{r, echo=FALSE, warning=FALSE}
+
+# Checking the Null Hypothesis Distribution:
+
+null_plot <- ggplot(daily_sales_by_genre,aes(x=daily.sales, fill = genre))+
+  geom_histogram(aes(y=..density..),position="identity", alpha=0.3, binwidth=1)+
+  stat_function(fun=dnorm, args=list(mean=null.mean, sd=null.sd)) + labs(x="Daily Sales", y="Density", title="Null Hypothesis", fill="Genre")
+
+# Checking the Alternative Hypothesis Distribution:
+
+colours <- scales::hue_pal()(3)
+alt_plot <- ggplot(daily_sales_by_genre, aes(x=daily.sales, fill=genre))+
+  geom_histogram(aes(y=..density..), position="identity", alpha=0.3, binwidth=1)+ 
+  labs(x="Daily Sales", y="Density", title="Alternative Hypothesis", fill="Origin") +
+	stat_function(fun=dnorm, args=list(mean=alternative.means[1], sd=alternative.sd), col=colours[1]) +
+	stat_function(fun=dnorm, args=list(mean=alternative.means[2], sd=alternative.sd), col=colours[2]) +
+	stat_function(fun=dnorm, args=list(mean=alternative.means[3], sd=alternative.sd), col=colours[3]) 
+
+grid.arrange(null_plot, alt_plot, ncol=1)
+
+```
+
+### Do books have more/fewer sales depending upon their average review scores and total number of reviews?
+
+To answer this question, we started with looking at the data distribution. As seen in the below figure, daily sales and total reviews are positively correlated (r = 0.66, p < 0.05); while daily sales and average reviews are weakly correlated (r= -0.004, p > 0.05).
+
+```{r, echo=FALSE}
+
+sales_tot_rev_plot <- ggplot(sales_data, aes(y=daily.sales, x=total.reviews)) + geom_point() + labs(x="Total Reviews", y="Daily Sales", subtitle="The shaded area shows the 95% CI for the best-fitting regression line", title = "Daily Sales vs Total Reviews") + geom_smooth(method=lm)
+
+sales_avg_rev_plot <- ggplot(sales_data, aes(y=daily.sales, x=avg.review)) + geom_point() + labs(x="Average Reviews", y="Daily Sales", subtitle="The shaded area shows the 95% CI for the best-fitting regression line", title = "Daily Sales vs Average Reviews") + geom_smooth(method=lm)
+
+sales_dist <- grid.arrange(sales_tot_rev_plot, sales_avg_rev_plot, ncol=1)
+
+
+```
+
+
+**Effect of Total Reviews on Daily Sales:**
+
+Our analysis shows that there is *significant* relationship between daily sales and total reviews. There is an average increase of £0.53 sales for every increase in the total review (95% CI = [0.52,0.55]). This increase is significantly different from zero, t(5998)=68.7, p<.0001.
+
+**Effect of Average Reviews on Daily Sales:**
+
+Our analysis shows that the relationship between daily sales and average reviews is *not significantly different from zero*. There is an average decrease of £0.22 sales for every point increase in the average review. However, the confidence intervals include zero (95% CI = [-1.6, 1.1]) and this decrease is not significantly different from zero, t(5998)=−0.32, p=0.747.
+
+**Effect of Total Reviews and Average Reviews on Daily Sales:**
+
+Our analysis shows that the daily sales decreases by statistically significant amount of £3.94 t(5997) = -7.7, p < 0.0001, for every extra increase in average reviews, holding the total reviews constant. Also, when controlling the average reviews, the daily sales increase by statistically significant amount of £0.54 t(5997) = 69.5, p< 0.0001, for every extra increase in total reviews.
+
+Also, our analysis shows that there is a statistically *significant positive interaction* between average reviews and total reviews when predicting the daily sales. We have utilised anova test to check if having additional complexity of considering interaction between total reviews and average reviews makes sense. 
+
+Model comparison shows that a regression model including total reviews, average reviews, and interaction of total and average results in a significantly better overall fit than a model only including total reviews and average reviews F(5996)=130.21, p< 0.0001.
+
+
+Below visualisation concludes the effect of average and total reviews on daily sales - as the average review of a book increases there is steeper increase in daily sales value as total number of reviews increases. For instance, at an average review of 4.5, we can cover the entire range of sales [from dark blue surface to yellow surface] as we increase the total reviews.
+
+```{r, echo=FALSE}
+
+intr_surf_data <- tibble(avg.review = unlist(expand.grid(seq(0,5,0.5), seq(0, 250, 5))[1]),
+                         total.reviews = unlist(expand.grid(seq(0, 20, 2), seq(0, 250, 5))[2]))
+
+intr_surf_data <- mutate(intr_surf_data,
+                         main.hat = predict(lm_sales_avg_tot_rev, intr_surf_data),
+                         intr.hat = predict(sales_intr, intr_surf_data))
+
+surf.main <- ggplot(intr_surf_data, aes(avg.review, total.reviews)) + geom_contour_filled(aes(z = main.hat)) + labs(subtitle = "Main Effects")  + guides(fill=guide_legend(title="y"))
+
+surf.intr <- ggplot(intr_surf_data, aes(avg.review, total.reviews)) + geom_contour_filled(aes(z = intr.hat)) + labs(subtitle = "Effect of Total and Average Reviews on Daily Sales", x = "Average Reviews", y = "Total Reviews")   + guides(fill=guide_legend(title="Daily Sales"))
+
+sales_rev_main_int_plot <- grid.arrange( surf.intr, nrow = 1)
+
+
+
+```
+
+
+
+### What is the effect of sale price upon the number of sales, and is this different across genres?
+
+As seen from the below distribution for sales vs sale price (£) across genre, sales price is *negatively correlated* with Daily Sales.
+
+```{r, echo=FALSE}
+
+sp_sales_all <- ggplot(sale_price_df, aes(y=daily.sales, x=sale.price)) + geom_point(alpha = 0.15) + labs(x="Sales Price (£)", y="Daily Sales", subtitle="Effect of Sales Price on Dialy Sales for all Genre (r = -0.28)") + geom_smooth(method=lm)
+
+sp_sales_genre <- ggplot(sale_price_df, aes(y=daily.sales, x=sale.price, color = genre)) + geom_point(alpha = 0.15) + labs(x="Sales Price (£)", y="Daily Sales", subtitle="Effect of Sales Price on Dialy Sales by Genre") + geom_smooth(method=lm)
+
+sale_price_dist <- grid.arrange(sp_sales_all, sp_sales_genre, ncol=1)
+
+```
+
+Our analysis shows that there is *significant* relationship between daily sales and sales price. There is an average decrease of four books for every increase in sales price (95% CI =[-4.15,-3.48]). This decrease is significantly different from zero, t(5998)=-22.38, p<.0001.
+
+Utilised anova test determine to compares two possible models i.e. without and with controlling for genre. The results from the model with sales price and genre as predictors is significantly better than the model having sale price only as the predictor. Based on the results shown below we can conclude that the daliy sales is different across the different genre. 
+
+
+```{r, echo=FALSE}
+
+lm_daily_sales_sp_genre_pairs <- pairs(lm_sales_sp_genre_emm)
+lm_daily_sales_sp_genre_pairs
+```
+
+
+
+
